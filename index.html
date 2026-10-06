@@ -88,43 +88,23 @@
             color: #34D399;
             margin-right: 6px;
         }
-        .waitlist-form {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            max-width: 450px;
-            margin: 0 auto;
-        }
-        input[type="email"] {
-            flex: 1;
-            padding: 14px 20px;
-            background-color: #111827;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            color: #FFFFFF;
-            font-family: 'Inter', sans-serif;
-            font-size: 1rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        input[type="email"]:focus {
-            border-color: #60A5FA;
-        }
-        button {
-            padding: 14px 24px;
+        
+        /* Updated CTA Link Button Styles */
+        .cta-button {
+            display: inline-block;
+            padding: 14px 28px;
             background-color: #E5E7EB;
             color: #050505;
-            border: none;
+            text-decoration: none;
             border-radius: 8px;
             font-weight: 600;
             font-size: 1rem;
-            cursor: pointer;
             transition: background-color 0.2s, transform 0.1s;
         }
-        button:hover {
+        .cta-button:hover {
             background-color: #FFFFFF;
         }
-        button:active {
+        .cta-button:active {
             transform: scale(0.98);
         }
     </style>
@@ -150,24 +130,11 @@
             <span>Quant Analyzer</span>
         </div>
 
-        <div class="waitlist-form">
-            <input type="email" id="email-input" placeholder="Enter your email address" required>
-            <button onclick="joinWaitlist()" id="submit-btn">Request Access</button>
-        </div>
+        <!-- Hyperlink replacing the email form -->
+        <a href="https://x.com/brownbaconx" target="_blank" rel="noopener noreferrer" class="cta-button">
+            Reach out for access.
+        </a>
     </div>
-
-    <script>
-        function joinWaitlist() {
-            const email = document.getElementById("email-input").value;
-            const btn = document.getElementById("submit-btn");
-            if(email) {
-                btn.innerText = "Access Requested";
-                btn.style.backgroundColor = "#34D399";
-                btn.style.color = "#050505";
-                document.getElementById("email-input").value = "";
-            }
-        }
-    </script>
 
 </body>
 </html>
