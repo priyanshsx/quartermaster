@@ -146,6 +146,12 @@ def style_fig(fig, height=380):
     return fig
 #--------------------------------------------------------------#
 
+# Serializes the analyzed frame for download 
+@st.cache_data
+def to_csv_bytes(df):
+    return df.to_csv(index_label="date").encode("utf-8")
+#--------------------------------------------------------------#
+
 # Visualisation Function: builds the charts for the metrics computed above 
 def visualize(df):
 
@@ -355,8 +361,28 @@ if result:
 
     if health_report["is_healthy"]:
         enriched_data = result["enriched_data"] 
-
         missing = health_report['missing_dates']
+
+        # Download csv option 
+        start_str = enriched_data.index[0].strftime("%Y-%m-%d")
+        end_str = enriched_data.index[-1].strftime("%Y-%m-%d")
+        status = "integrity checks passed" if len(missing) == 0 else f"{len(missing)} date(s) missing."
+
+        head_col, d1_col = st.columns([3, 1], vertical_alignment="center")
+        with head_col:
+            st.caption(f"{start_str} - {end_str} · {len(enriched_data):,} rows · {status}")
+        with d1_col:
+            st.download_button(
+                label="Download CSV",
+                data=to_csv_bytes(enriched_data),
+                file_name=f"quartermaster_{result['ticker']}_{start_str}_{end_str}.csv",
+                mime="text/csv",
+                icon=":material/download:",
+                use_container_width=True,
+                help="Daily OHLCV plus computed returns, moving averages, rolling volatility, cumulative return and drawdown."
+            )
+
+
         if len(missing) > 0:
             date_list = ", ".join(missing.strftime('%Y-%m-%d'))
             st.warning(f"{len(missing)} date(s) missing from the source data: {date_list}. "
