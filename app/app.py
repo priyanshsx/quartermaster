@@ -1,4 +1,5 @@
 #---------------------beginning-of-code------------------------#
+#--------------------------------------------------------------#
 
 # importing libraries
 import streamlit as st 
@@ -126,7 +127,6 @@ def pct_format(span):
     if span >= 0.001:
         return ".2%"
     return ".3%"
-
 #--------------------------------------------------------------#
 
 # Styling function for all the figures 
