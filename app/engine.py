@@ -25,7 +25,7 @@ MAX_MISSING_DATES = 5
 # Checks for date ranges for which data is available from yfinance
 @st.cache_data(ttl=86400)
 
-def get_crypto_date_bounds(symbol):
+def get_asset_date_bounds(symbol):
     ticker = yf.Ticker(symbol)
     df = ticker.history(period='max')
 
