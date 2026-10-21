@@ -128,7 +128,7 @@ if result:
                 file_name=f"quartermaster_{result['ticker']}_{start_str}_{end_str}.csv",
                 mime="text/csv",
                 icon=":material/download:",
-                use_container_width=True,
+                width="stretch",
                 help="Daily OHLCV plus computed returns, moving averages, rolling volatility, cumulative return and drawdown."
             )
 
@@ -155,21 +155,21 @@ if result:
 
         with top_left:
             st.subheader(f"{result['ticker']} Risk vs. Return")
-            st.plotly_chart(risk_vs_cum_return_fig, use_container_width=True)
+            st.plotly_chart(risk_vs_cum_return_fig, width="stretch")
 
         with top_right:
             st.subheader(f"{result['ticker']} Price Action with SMAs")
-            st.plotly_chart(candlestick_fig, use_container_width=True)
+            st.plotly_chart(candlestick_fig, width="stretch")
 
         bottom_left, bottom_right = st.columns(2, gap="medium")
 
         with bottom_left:
             st.subheader(f"{result['ticker']} Drawdown")
-            st.plotly_chart(drawdown_fig, use_container_width=True)
+            st.plotly_chart(drawdown_fig, width="stretch")
 
         with bottom_right:
             st.subheader(f"{result['ticker']} Historical Returns")
-            st.plotly_chart(returns_histogram_fig, use_container_width=True)
+            st.plotly_chart(returns_histogram_fig, width="stretch")
             st.caption("Each bar groups days by their return. Hover to see the return range "
                        "and how many days fell in it. Axis zoomed to the 1st-99th percentile.")
 #--------------------------------------------------------------#
