@@ -5,7 +5,7 @@
 MARKETS = {
     "crypto": {"trading_days": 365, "currency": "USD", "max_gap_days": 1},
     "us_equity": {"trading_days": 252, "currency": "USD", "max_gap_days": 4},
-    "in_equity": {"trading_days": 252, "currency": "INR", "max_gap_days": 4},
+    "in_equity": {"trading_days": 252, "currency": "INR", "max_gap_days": 5},
     "uk_equity": {"trading_days": 252, "currency": "GBP", "max_gap_days": 4},
     "commodity": {"trading_days": 252, "currency": "USD", "max_gap_days": 4}
 }
