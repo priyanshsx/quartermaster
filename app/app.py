@@ -10,10 +10,11 @@ from engine import (
     fetch_asset,
     tick_inspector,
     MAX_MISSING_DATES,
-    available_assets,
     quant_analyzer,
     to_csv_bytes,
 )
+from assets import ASSET_SPECS
+from assets import get_spec
 from charts import visualize 
 ASSETS = Path(__file__).parent/"assets"
 st.set_page_config(layout="wide", page_title="Quartermaster", page_icon=str(ASSETS/"favicon-32.png"))
@@ -27,8 +28,9 @@ st.sidebar.header("Configuration")
 
 # Step 1: request for ticker and dates
 ui_ticker = st.sidebar.selectbox(label='select a ticker from the list',
-                         options=available_assets, 
-                         index=None)
+                         options=list(ASSET_SPECS.keys()), 
+                         index=None,
+                         format_func=lambda t: f"{ASSET_SPECS[t]['display']} ({t})")
 
 # managing ticker entries
 if ui_ticker:
@@ -73,6 +75,8 @@ if st.sidebar.button("Run analysis", type="primary"):
         st.error("Start date must be before the end date.")
         st.stop()
 
+    spec = get_spec(ui_ticker)
+
     # data download
     try: 
         with st.spinner(f"Downloading {ui_ticker} data..."):
@@ -86,10 +90,10 @@ if st.sidebar.button("Run analysis", type="primary"):
 #--------------------------------------------------------------#
 
     # Step 2: Clean data (if healthy)
-    health_report = tick_inspector(raw_data_df)
+    health_report = tick_inspector(raw_data_df, spec)
 
     if health_report['is_healthy'] == True:
-        enriched_data = quant_analyzer(raw_data_df,ui_ticker)
+        enriched_data = quant_analyzer(raw_data_df,ui_ticker, spec)
     else:
         enriched_data = None
     
@@ -205,7 +209,7 @@ else:
 
     with middle:
 
-        st.markdown("# Quantitative risk analysis for crypto assets")
+        st.markdown("# Quantitative risk analysis for your assets")
         st.markdown(
             "Pick an asset and a timeframe. Quartermaster audits the data "
             " before it charts anything, then shows what the risk actually "

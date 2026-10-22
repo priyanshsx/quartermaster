@@ -15,10 +15,6 @@ from pathlib import Path
 
 # Global Variables 
 
-# list of available assets you can download historical data for from yfinance
-available_assets = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'HYPE-USD', 'USDT-USD', 'BNB-USD', 'XRP-USD',
-    'ZEC-USD', 'WETH-USD', 'TRX-USD', 'NEAR-USD', 'LSK-USD']
-
 MAX_MISSING_DATES = 5
 #--------------------------------------------------------------#
 
@@ -61,7 +57,7 @@ def to_csv_bytes(df):
 #--------------------------------------------------------------#
 
 # Tick Inspector: checks for corrupted highs and lows, negative volume, and high, open, close
-def tick_inspector(df):
+def tick_inspector(df, spec):
     # checking for duplicates 
     duplicates = df.index.duplicated().sum()
 
@@ -90,7 +86,7 @@ def tick_inspector(df):
 #--------------------------------------------------------------#
 
 # Quant Analyzer: computes the metrics for the charts 
-def quant_analyzer(df, ui_ticker):
+def quant_analyzer(df, ui_ticker, spec):
     # daily returns 
     df['daily_returns'] = df['close'].pct_change()
 
@@ -102,7 +98,7 @@ def quant_analyzer(df, ui_ticker):
     df['log_returns'] = np.log(df['close'] / df['close'].shift(1)) 
 
     # rolling volatility for a 30-day period (annualized, for 365 trading days for crypto)
-    df['rolling_vol_annualized'] = df['log_returns'].rolling(window=30).std() * np.sqrt(365)
+    df['rolling_vol_annualized'] = df['log_returns'].rolling(window=30).std() * np.sqrt(spec["trading_days"])
 
     # calculating the cumulative return 
     df['cumulative_return'] = (1 + df['daily_returns']).cumprod() - 1 

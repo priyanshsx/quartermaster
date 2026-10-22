@@ -11,17 +11,38 @@ MARKETS = {
 }
 
 ASSET_SPECS = {
+    # Crypto Assets 
     "BTC-USD": {"display": "Bitcoin", "market": "crypto"},
-    "AAPL": {"display": "Apple", "market": "us_equity"},
-    "RELIANCE.NS": {"display": "Reliance Industries", "market": "in_equity"},
-    "GC=F": {"display": "Gold Futures", "market": "commodity"},
     "ETH-USD": {"display": "Ethereum", "market": "crypto"},
+    "SOL-USD": {"display": "Solana", "market": "crypto"},
+    "HYPE-USD": {"display": "Hype", "market": "crypto"},
+    "USDT-USD": {"display": "USDT", "market": "crypto"},
+    "BNB-USD": {"display": "BNB", "market": "crypto"},
+    "XRP-USD": {"display": "XRP", "market": "crypto"},
+    "ZEC-USD": {"display": "ZEC", "market": "crypto"},
+    "WETH-USD": {"display": "WETH", "market": "crypto"},
+    "TRX-USD": {"display": "TRX", "market": "crypto"},
+    "NEAR-USD": {"display": "Near", "market": "crypto"}, 
+    "LSK-USD": {"display": "LSK", "market": "crypto"},
+    #--------------------------------------------------------------#
+    
+    # US Equity 
+    "AAPL": {"display": "Apple", "market": "us_equity"},
     "SPY": {"display": "S&P500", "market": "us_equity"},
     "MSFT": {"display": "Microsoft", "market": "us_equity"},
+    #--------------------------------------------------------------#
+
+    # Indian Equity
+    "RELIANCE.NS": {"display": "Reliance Industries", "market": "in_equity"},
     "TCS.NS": {"display": "TATA Consultancy Services", "market": "in_equity"},
     "INFY.NS": {"display": "Infosys", "market": "in_equity"},
+    #--------------------------------------------------------------#
+
+    # Commodity
+    "GC=F": {"display": "Gold Futures", "market": "commodity"},
     "GLD": {"display": "Gold", "market": "commodity"},
     "SLV": {"display": "Silver", "market": "commodity"}
+    #--------------------------------------------------------------#
 }
 
 def get_spec(ticker): 
