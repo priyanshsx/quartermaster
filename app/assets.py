@@ -6,9 +6,14 @@ MARKETS = {
     "crypto": {"trading_days": 365, "currency": "USD", "max_gap_days": 1},
     "us_equity": {"trading_days": 252, "currency": "USD", "max_gap_days": 4},
     "in_equity": {"trading_days": 252, "currency": "INR", "max_gap_days": 5},
-    "uk_equity": {"trading_days": 252, "currency": "GBP", "max_gap_days": 4},
+    "uk_equity": {"trading_days": 252, "currency": "GBP", "max_gap_days": 5},
     "commodity": {"trading_days": 252, "currency": "USD", "max_gap_days": 4}
 }
+
+# NB: 
+    # max_gap_days measured from yfinance history, 2020-01-01 to 2025-12-31.
+    # Observed maxima: BTC-USD 1, AAPL 4, RELIANCE.NS 5 (Diwali), GC=F 4.
+    # uk_equity set to 5 on Easter (LSE closes Good Friday and Easter Monday).
 
 ASSET_SPECS = {
     # Crypto Assets 

@@ -64,8 +64,10 @@ def tick_inspector(df, spec):
     duplicates = df.index.duplicated().sum()
 
     # checking for missing dates 
-    calendar = pd.date_range(start=df.index.min(), end=df.index.max())
-    missing_dates = calendar.difference(df.index)
+    gaps = df.index.to_series().diff().dt.days
+    normal = spec["max_gap_days"]
+    excess_days = int((gaps - normal).clip(lower=0).sum())
+    suspicious_gaps = gaps[gaps > normal]
 
     # checking for corrupted highs and lows where low > high 
     corrupted_high_low = df[df['low'] > df['high']]
@@ -77,11 +79,12 @@ def tick_inspector(df, spec):
     high_open_close = df[(df['open'] > df['high']) | (df['close'] > df['high'])]
 
     # doing a global boolean mask check for bad data 
-    is_healthy = len(missing_dates) <= MAX_MISSING_DATES and len(corrupted_high_low) == 0 and len(negative_volume) == 0 and len(high_open_close) == 0 and duplicates == 0
+    is_healthy = excess_days <= MAX_MISSING_DATES and len(corrupted_high_low) == 0 and len(negative_volume) == 0 and len(high_open_close) == 0 and duplicates == 0
 
     return{"is_healthy": is_healthy, 
            "duplicates": duplicates,
-           "missing_dates": missing_dates,
+           "suspicious_gaps": suspicious_gaps,
+           "excess_days": excess_days,
            "corrupted_high_low": corrupted_high_low,
            "negative_volume": negative_volume,
            "high_open_close": high_open_close}

@@ -115,12 +115,13 @@ if result:
 
     if health_report["is_healthy"]:
         enriched_data = result["enriched_data"] 
-        missing = health_report['missing_dates']
+        excess = health_report['excess_days']
+        suspicious = health_report['suspicious_gaps']
 
         # Download csv option 
         start_str = enriched_data.index[0].strftime("%Y-%m-%d")
         end_str = enriched_data.index[-1].strftime("%Y-%m-%d")
-        status = "integrity checks passed" if len(missing) == 0 else f"{len(missing)} date(s) missing."
+        status = "integrity checks passed" if excess == 0 else f"{excess} day(s) beyond normal."
 
         head_col, d1_col = st.columns([3, 1], vertical_alignment="center")
         with head_col:
@@ -137,9 +138,9 @@ if result:
             )
 
 
-        if len(missing) > 0:
-            date_list = ", ".join(missing.strftime('%Y-%m-%d'))
-            st.warning(f"{len(missing)} date(s) missing from the source data: {date_list}. "
+        if excess > 0:
+            gap_list = ", ".join(f"{int(g)}-day gap before {d:%Y-%m-%d}" for d, g in suspicious.items())
+            st.warning(f"{excess} day(s) of data beyond the normal gap for this market: {gap_list}. "
                        f"The analysis still ran, but volatility and return distribution figures may be slightly affected.")
 
         # visualizing charts
@@ -189,10 +190,10 @@ if result:
             st.warning("Negative volume ticks found: ")
             st.dataframe(health_report['negative_volume'])
 
-        if len(health_report['missing_dates']) > MAX_MISSING_DATES:
-            missing = health_report['missing_dates']
-            date_list = ", ".join(missing[:10].strftime('%Y-%m-%d'))
-            st.warning(f"Found {len(health_report['missing_dates'])} missing dates which exceed the allowed missing dates value of {MAX_MISSING_DATES}. Missing: {date_list}.")
+        if health_report['excess_days'] > MAX_MISSING_DATES:
+            suspicious = health_report['suspicious_gaps']
+            gap_list = ", ".join(f"{int(g)}-day gap before {d:%Y-%m-%d}" for d, g in suspicious.head(10).items())
+            st.warning(f"Found {health_report['excess_days']} missing days which exceed the allowed value of {MAX_MISSING_DATES}. Gaps: {gap_list}.")
 
         if len(health_report['corrupted_high_low']) > 0:
             st.warning("Rows where low is higher than high: ")
