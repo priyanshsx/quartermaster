@@ -53,7 +53,9 @@ def fetch_asset(ui_ticker, ui_start_date, ui_end_date):
 # Serializes the analyzed frame for download 
 @st.cache_data
 def to_csv_bytes(df):
-    return df.to_csv(index_label="date").encode("utf-8")
+    keep_full = {"open", "high", "low", "close", "sma_20", "sma_50", "volume"}
+    rounding = {c: 6 for c in df.columns if c not in keep_full}
+    return df.round(rounding).to_csv(index_label="date").encode("utf-8")
 #--------------------------------------------------------------#
 
 # Tick Inspector: checks for corrupted highs and lows, negative volume, and high, open, close
