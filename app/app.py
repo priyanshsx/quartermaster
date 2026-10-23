@@ -12,7 +12,7 @@ st.set_page_config(layout="wide", page_title="Quartermaster", page_icon=str(ASSE
 st.logo(str(ASSET_DIR / "logo-mark-256.png"), link="https://quartermasterlabs.com")
 
 planner = st.Page("planner.py", title="Planner", default=True)
-quant = st.Page("quant_mode.py", title="Quantitative")
+quant = st.Page("quant_mode.py", title="Quantitative Metrics")
 
 st.navigation([planner, quant]).run()
 #--------------------------------------------------------------#
