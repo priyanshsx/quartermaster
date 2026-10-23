@@ -15,7 +15,7 @@ from engine import (
 from assets import ASSET_SPECS
 from assets import get_spec
 from charts import visualize 
-ASSETS = Path(__file__).parent/"assets"
+from paths import ASSET_DIR
 #--------------------------------------------------------------#
 
 # User Interface 
@@ -220,7 +220,7 @@ else:
             "3. **Run analysis**"
         )
 
-        st.image(str(ASSETS/"sample-dashboard.png"))
+        st.image(str(ASSET_DIR/"sample-dashboard.png"))
         st.caption("Example: BTC-USD over the last year.")
 
         st.markdown("[Read the methodology](https://quartermasterlabs.com/docs)")
