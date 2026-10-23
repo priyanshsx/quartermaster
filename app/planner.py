@@ -86,46 +86,46 @@ if run:
         "enriched_data": enriched_data
     }
 
-    result = st.session_state.get('planner_result')
+result = st.session_state.get('planner_result')
 
-    if result:
-        health_report = result['health_report']
+if result:
+    health_report = result['health_report']
 
-        if health_report['is_healthy']:
-            enriched_data = result['enriched_data']
-            amount = result['amount']
-            spec = get_spec(result['ticker'])
-            ccy = spec["currency"]
+    if health_report['is_healthy']:
+        enriched_data = result['enriched_data']
+        amount = result['amount']
+        spec = get_spec(result['ticker'])
+        ccy = spec["currency"]
 
-            entry_date = enriched_data.index[0]
-            entry_price = enriched_data['close'].iloc[0]
-            exit_date = enriched_data.index[-1]
-            exit_price = enriched_data['close'].iloc[-1]
+        entry_date = enriched_data.index[0]
+        entry_price = enriched_data['close'].iloc[0]
+        exit_date = enriched_data.index[-1]
+        exit_price = enriched_data['close'].iloc[-1]
 
-            final_value = amount * (exit_price / entry_price)
+        final_value = amount * (exit_price / entry_price)
 
-            month_label = result['month'].strftime("%B %Y")
-            entry_label = entry_date.strftime("%d %b %Y")
-            exit_label = exit_date.strftime("%d %b %Y")
+        month_label = result['month'].strftime("%B %Y")
+        entry_label = entry_date.strftime("%d %b %Y")
+        exit_label = exit_date.strftime("%d %b %Y")
 
-            st.metric(
-                label=f"{ccy} {amount:,.0f} in {spec['display']}, {month_label}",
-                value=f"{ccy} {final_value:,.0f}"
+        st.metric(
+            label=f"{ccy} {amount:,.0f} in {spec['display']}, {month_label}",
+            value=f"{ccy} {final_value:,.0f}"
+        )
+
+        st.caption(
+            f"Bought at {ccy} {entry_price:,.2f} on {entry_label}, the first trading day of the month. Valued at {ccy} {exit_price:,.2f} on {exit_label}. Prices are adjusted for splits and dividends."
+        )
+
+        excess = health_report['excess_days']
+        if excess > 0:
+            st.warning(
+                f"{excess} day(s) of price history are missing beyond what's normal for this market. The figures still ran, but treat them as approximate."
             )
-
-            st.caption(
-                f"Bought at {ccy} {entry_price:,.2f} on {entry_label}, the first trading day of the month. Valued at {ccy} {exit_price:,.2f} on {exit_label}. Prices are adjusted for splits and dividends."
-            )
-
-            excess = health_report['excess_days']
-            if excess > 0:
-                st.warning(
-                    f"{excess} day(s) of price history are missing beyond what's normal for this market. The figures still ran, but treat them as approximate."
-                )
-            else:
-                st.error(
-                    "The price history for this asset didn't pass its integrity checks, so nothing was calculated. Try a different asset or a later start month."
-                )
+    else:
+        st.error(
+            "The price history for this asset didn't pass its integrity checks, so nothing was calculated. Try a different asset or a later start month."
+        )
 
 #--------------------------------------------------------------#
 #---------------------end-of-code------------------------------#
