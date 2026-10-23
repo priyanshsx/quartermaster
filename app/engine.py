@@ -20,7 +20,6 @@ MAX_MISSING_DATES = 5
 
 # Checks for date ranges for which data is available from yfinance
 @st.cache_data(ttl=86400, show_spinner="Checking available history")
-
 def get_asset_date_bounds(symbol):
     ticker = yf.Ticker(symbol)
     df = ticker.history(period='max')
@@ -33,7 +32,6 @@ def get_asset_date_bounds(symbol):
 
 # OHLCV downloader: downloads the raw data from yfinance
 @st.cache_data(ttl=3600, max_entries=100, show_spinner=False)
-
 def fetch_asset(ui_ticker, ui_start_date, ui_end_date):
 
     # downloads the raw data 
@@ -43,8 +41,16 @@ def fetch_asset(ui_ticker, ui_start_date, ui_end_date):
     if asset.empty:
         raise ValueError("No data found for this ticker and date range.")
 
+    today_utc = pd.Timestamp.utcnow().date()
+    asset = asset[asset.index.date < today_utc]
+
+    if asset.empty:
+        raise ValueError("Only today's session falls in this range. And it hasn't closed yet.")
+
     # formats the columns into a standard from the raw downloaded data   
-    asset.columns = asset.columns.droplevel(1).str.lower()
+    if isinstance(asset.columns, pd.MultiIndex):
+        asset.columns = asset.columns.get_level_values(0)
+    asset.columns = asset.columns.str.lower()
     asset.index.name = 'date'
     asset.columns.name = None 
     return asset 

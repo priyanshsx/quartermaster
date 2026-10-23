@@ -114,7 +114,7 @@ if result:
         )
 
         st.caption(
-            f"Bought at {ccy} {entry_price:,.2f} on {entry_label}, the first trading day of the month. Valued at {ccy} {exit_price:,.2f} on {exit_label}. Prices are adjusted for splits and dividends."
+            f"Bought at {ccy} {entry_price:,.2f} on {entry_label}, the first trading day of the month. Valued at {ccy} {exit_price:,.2f} on the close of {exit_label}, the most recent completed session. Prices are adjusted for splits and dividends."
         )
 
         excess = health_report['excess_days']
