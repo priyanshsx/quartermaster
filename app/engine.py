@@ -15,10 +15,6 @@ from pathlib import Path
 
 # Global Variables 
 
-# list of available assets you can download historical data for from yfinance
-available_assets = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'HYPE-USD', 'USDT-USD', 'BNB-USD', 'XRP-USD',
-    'ZEC-USD', 'WETH-USD', 'TRX-USD', 'NEAR-USD', 'LSK-USD']
-
 MAX_MISSING_DATES = 5
 #--------------------------------------------------------------#
 
@@ -57,17 +53,21 @@ def fetch_asset(ui_ticker, ui_start_date, ui_end_date):
 # Serializes the analyzed frame for download 
 @st.cache_data
 def to_csv_bytes(df):
-    return df.to_csv(index_label="date").encode("utf-8")
+    keep_full = {"open", "high", "low", "close", "sma_20", "sma_50", "volume"}
+    rounding = {c: 6 for c in df.columns if c not in keep_full}
+    return df.round(rounding).to_csv(index_label="date").encode("utf-8")
 #--------------------------------------------------------------#
 
 # Tick Inspector: checks for corrupted highs and lows, negative volume, and high, open, close
-def tick_inspector(df):
+def tick_inspector(df, spec):
     # checking for duplicates 
     duplicates = df.index.duplicated().sum()
 
     # checking for missing dates 
-    calendar = pd.date_range(start=df.index.min(), end=df.index.max())
-    missing_dates = calendar.difference(df.index)
+    gaps = df.index.to_series().diff().dt.days
+    normal = spec["max_gap_days"]
+    excess_days = int((gaps - normal).clip(lower=0).sum())
+    suspicious_gaps = gaps[gaps > normal]
 
     # checking for corrupted highs and lows where low > high 
     corrupted_high_low = df[df['low'] > df['high']]
@@ -79,18 +79,19 @@ def tick_inspector(df):
     high_open_close = df[(df['open'] > df['high']) | (df['close'] > df['high'])]
 
     # doing a global boolean mask check for bad data 
-    is_healthy = len(missing_dates) <= MAX_MISSING_DATES and len(corrupted_high_low) == 0 and len(negative_volume) == 0 and len(high_open_close) == 0 and duplicates == 0
+    is_healthy = excess_days <= MAX_MISSING_DATES and len(corrupted_high_low) == 0 and len(negative_volume) == 0 and len(high_open_close) == 0 and duplicates == 0
 
     return{"is_healthy": is_healthy, 
            "duplicates": duplicates,
-           "missing_dates": missing_dates,
+           "suspicious_gaps": suspicious_gaps,
+           "excess_days": excess_days,
            "corrupted_high_low": corrupted_high_low,
            "negative_volume": negative_volume,
            "high_open_close": high_open_close}
 #--------------------------------------------------------------#
 
 # Quant Analyzer: computes the metrics for the charts 
-def quant_analyzer(df, ui_ticker):
+def quant_analyzer(df, ui_ticker, spec):
     # daily returns 
     df['daily_returns'] = df['close'].pct_change()
 
@@ -102,7 +103,7 @@ def quant_analyzer(df, ui_ticker):
     df['log_returns'] = np.log(df['close'] / df['close'].shift(1)) 
 
     # rolling volatility for a 30-day period (annualized, for 365 trading days for crypto)
-    df['rolling_vol_annualized'] = df['log_returns'].rolling(window=30).std() * np.sqrt(365)
+    df['rolling_vol_annualized'] = df['log_returns'].rolling(window=30).std() * np.sqrt(spec["trading_days"])
 
     # calculating the cumulative return 
     df['cumulative_return'] = (1 + df['daily_returns']).cumprod() - 1 

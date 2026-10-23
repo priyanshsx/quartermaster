@@ -10,10 +10,11 @@ from engine import (
     fetch_asset,
     tick_inspector,
     MAX_MISSING_DATES,
-    available_assets,
     quant_analyzer,
     to_csv_bytes,
 )
+from assets import ASSET_SPECS
+from assets import get_spec
 from charts import visualize 
 ASSETS = Path(__file__).parent/"assets"
 st.set_page_config(layout="wide", page_title="Quartermaster", page_icon=str(ASSETS/"favicon-32.png"))
@@ -27,8 +28,9 @@ st.sidebar.header("Configuration")
 
 # Step 1: request for ticker and dates
 ui_ticker = st.sidebar.selectbox(label='select a ticker from the list',
-                         options=available_assets, 
-                         index=None)
+                         options=list(ASSET_SPECS.keys()), 
+                         index=None,
+                         format_func=lambda t: f"{ASSET_SPECS[t]['display']} ({t})")
 
 # managing ticker entries
 if ui_ticker:
@@ -73,6 +75,8 @@ if st.sidebar.button("Run analysis", type="primary"):
         st.error("Start date must be before the end date.")
         st.stop()
 
+    spec = get_spec(ui_ticker)
+
     # data download
     try: 
         with st.spinner(f"Downloading {ui_ticker} data..."):
@@ -86,10 +90,10 @@ if st.sidebar.button("Run analysis", type="primary"):
 #--------------------------------------------------------------#
 
     # Step 2: Clean data (if healthy)
-    health_report = tick_inspector(raw_data_df)
+    health_report = tick_inspector(raw_data_df, spec)
 
     if health_report['is_healthy'] == True:
-        enriched_data = quant_analyzer(raw_data_df,ui_ticker)
+        enriched_data = quant_analyzer(raw_data_df,ui_ticker, spec)
     else:
         enriched_data = None
     
@@ -111,12 +115,13 @@ if result:
 
     if health_report["is_healthy"]:
         enriched_data = result["enriched_data"] 
-        missing = health_report['missing_dates']
+        excess = health_report['excess_days']
+        suspicious = health_report['suspicious_gaps']
 
         # Download csv option 
         start_str = enriched_data.index[0].strftime("%Y-%m-%d")
         end_str = enriched_data.index[-1].strftime("%Y-%m-%d")
-        status = "integrity checks passed" if len(missing) == 0 else f"{len(missing)} date(s) missing."
+        status = "integrity checks passed" if excess == 0 else f"{excess} day(s) beyond normal."
 
         head_col, d1_col = st.columns([3, 1], vertical_alignment="center")
         with head_col:
@@ -133,9 +138,9 @@ if result:
             )
 
 
-        if len(missing) > 0:
-            date_list = ", ".join(missing.strftime('%Y-%m-%d'))
-            st.warning(f"{len(missing)} date(s) missing from the source data: {date_list}. "
+        if excess > 0:
+            gap_list = ", ".join(f"{int(g)}-day gap before {d:%Y-%m-%d}" for d, g in suspicious.items())
+            st.warning(f"{excess} day(s) of data beyond the normal gap for this market: {gap_list}. "
                        f"The analysis still ran, but volatility and return distribution figures may be slightly affected.")
 
         # visualizing charts
@@ -185,10 +190,10 @@ if result:
             st.warning("Negative volume ticks found: ")
             st.dataframe(health_report['negative_volume'])
 
-        if len(health_report['missing_dates']) > MAX_MISSING_DATES:
-            missing = health_report['missing_dates']
-            date_list = ", ".join(missing[:10].strftime('%Y-%m-%d'))
-            st.warning(f"Found {len(health_report['missing_dates'])} missing dates which exceed the allowed missing dates value of {MAX_MISSING_DATES}. Missing: {date_list}.")
+        if health_report['excess_days'] > MAX_MISSING_DATES:
+            suspicious = health_report['suspicious_gaps']
+            gap_list = ", ".join(f"{int(g)}-day gap before {d:%Y-%m-%d}" for d, g in suspicious.head(10).items())
+            st.warning(f"Found {health_report['excess_days']} missing days which exceed the allowed value of {MAX_MISSING_DATES}. Gaps: {gap_list}.")
 
         if len(health_report['corrupted_high_low']) > 0:
             st.warning("Rows where low is higher than high: ")
@@ -205,7 +210,7 @@ else:
 
     with middle:
 
-        st.markdown("# Quantitative risk analysis for crypto assets")
+        st.markdown("# Quantitative risk analysis for your assets")
         st.markdown(
             "Pick an asset and a timeframe. Quartermaster audits the data "
             " before it charts anything, then shows what the risk actually "
