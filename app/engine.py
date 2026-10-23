@@ -19,7 +19,7 @@ MAX_MISSING_DATES = 5
 #--------------------------------------------------------------#
 
 # Checks for date ranges for which data is available from yfinance
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, show_spinner="Checking available history")
 
 def get_asset_date_bounds(symbol):
     ticker = yf.Ticker(symbol)
@@ -32,7 +32,7 @@ def get_asset_date_bounds(symbol):
 #--------------------------------------------------------------#
 
 # OHLCV downloader: downloads the raw data from yfinance
-@st.cache_data(ttl=3600, max_entries=100)
+@st.cache_data(ttl=3600, max_entries=100, show_spinner=False)
 
 def fetch_asset(ui_ticker, ui_start_date, ui_end_date):
 
@@ -51,7 +51,7 @@ def fetch_asset(ui_ticker, ui_start_date, ui_end_date):
 #--------------------------------------------------------------#
 
 # Serializes the analyzed frame for download 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def to_csv_bytes(df):
     keep_full = {"open", "high", "low", "close", "sma_20", "sma_50", "volume"}
     rounding = {c: 6 for c in df.columns if c not in keep_full}
