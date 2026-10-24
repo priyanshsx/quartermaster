@@ -128,3 +128,61 @@ def quant_analyzer(df, ui_ticker, spec):
 
     return df
 #--------------------------------------------------------------#
+
+# Computes the numbers displayed on the planner page
+def outcome_analyzer(df, amount):
+    cr = df['cumulative_return']
+    r = df['daily_returns']
+
+    # Entries and exits 
+    entry_price = df['close'].iloc[0]
+    entry_date = df.index[0]
+    exit_price = df['close'].iloc[-1]
+    exit_date = df.index[-1]
+
+    # Final Value    
+    final_value = amount * (1 + cr.iloc[-1])
+
+    # Max unrealized loss 
+    max_loss_pct = cr.min()
+    max_profit_pct = cr.max()
+
+    # Worst week, worst month 
+    weekly = (1 + r).resample("W").prod() - 1
+    monthly = (1 + r).resample("ME").prod() - 1
+
+    return {
+
+        # Computes basic details 
+        "entry_price": entry_price,
+        "entry_date": entry_date,
+        "exit_price": exit_price,
+        "exit_date": exit_date,
+        "final_value": final_value,
+        "gain_amount": amount * cr.iloc[-1],
+        "gain_pct": cr.iloc[-1],
+
+        # Computes max loss amounts
+        "max_loss_amount": amount * max_loss_pct,
+        "max_loss_pct": max_loss_pct,
+        "max_loss_date": cr.idxmin(),
+
+        # Computes max profit amounts 
+        "max_profit_amount": amount * max_profit_pct,
+        "max_profit_pct": max_profit_pct,
+        "max_profit_date": cr.idxmax(),
+        
+        # Computes loss days 
+        "loss_days": int((cr < 0).sum()),
+        "total_days": len(df),
+
+        # Computes worst performance returns, date(s), and week(s)
+        "worst_day_pct": r.min(),
+        "worst_day_date": r.idxmin(),
+        "worst_week_pct": weekly.min(),
+        "worst_week_date": weekly.idxmin(),
+        "worst_month_pct": monthly.min(),
+        "worst_month_date": monthly.idxmin()
+    }
+#--------------------------------------------------------------#
+#----------------------End-of-code-----------------------------#
