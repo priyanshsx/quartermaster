@@ -97,19 +97,11 @@ if result:
         spec = get_spec(result['ticker'])
         ccy = spec["currency"]
 
-
         f = outcome_analyzer(result['enriched_data'], result['amount'])
 
-        # entry_date = enriched_data.index[0]
-        # entry_price = enriched_data['close'].iloc[0]
-        # exit_date = enriched_data.index[-1]
-        # exit_price = enriched_data['close'].iloc[-1]
-
-        # final_value = amount * (exit_price / entry_price)
-
-        # month_label = result['month'].strftime("%B %Y")
-        # entry_label = entry_date.strftime("%d %b %Y")
-        # exit_label = exit_date.strftime("%d %b %Y")
+        month_label = result['month'].strftime("%B %Y")
+        entry_label = f['entry_date'].strftime("%d %b %Y")
+        exit_label = f['exit_date'].strftime("%d %b %Y")
 
         st.metric(
             label=f"{ccy} {amount:,.0f} in {spec['display']}, {f['entry_date']}",
@@ -118,47 +110,41 @@ if result:
         )
 
         st.caption(
-            f"Bought at {ccy} {f['entry_price']:,.2f} on {f['entry_date']}, the first trading day of the month. Valued at {ccy} {f['exit_price']:,.2f} on the close of {f['exit_date']}, the most recent completed session. Prices are adjusted for splits and dividends."
+            f"Bought at {ccy} {f['entry_price']:,.2f} on {entry_label}, the first trading day of the month. Valued at {ccy} {f['exit_price']:,.2f} on the close of {exit_label}, the most recent completed session. Prices are adjusted for splits and dividends."
         )
 
         r1c1, r1c2, r1c3 = st.columns(3)
         r2c1, r2c2, r2c3 = st.columns(3)
 
         with r1c1:
-            if f['max_loss_pct'] < 0:
+            if f["max_loss_pct"] < 0:
                 st.metric("Max unrealized loss",
-                          f"{ccy} {f['max_loss_amount']:,.0f}",
-                          delta=f"{f['max_loss_pct']:.1%} on {f['max_loss_date']: %d %b %Y}",
-                          delta_color="off")
-
+                        f"-{ccy} {abs(f['max_loss_amount']):,.0f}",
+                        delta=f"{f['max_loss_pct']:.1%} on {f['max_loss_date']:%d %b %Y}")
             else:
-                st.metric("Max unrealized loss", "None", delta="Never fell below what you paid", delta_color="off")
+                st.metric("Max unrealized loss", "None")
+                st.caption("Never fell below what you paid")
 
         with r1c2:
             st.metric("Max profit",
-                      f"{ccy} {f['max_profit_amount']:,.0f}",
-                      delta=f"{f['max_profit_pct']:.1%} on {f['max_profit_date']: %d %b %Y}",
-                      delta_color='off')
+                    f"{ccy} {f['max_profit_amount']:,.0f}",
+                    delta=f"{f['max_profit_pct']:+.1%} on {f['max_profit_date']:%d %b %Y}")
 
         with r1c3:
-            st.metric("Days at a loss",
-                      f"{f['loss_days']:,} of {f['total_days']:,}",
-                      delta=f"{f['loss_days'] / f['total_days']:.0%} of the time",
-                      delta_color='off')
+            st.metric("Days at a loss", f"{f['loss_days']:,} of {f['total_days']:,}")
+            st.caption(f"{f['loss_days'] / f['total_days']:.0%} of the holding period")   
 
         with r2c1:
-            st.metric("Worst day", f"{f['worst_day_pct']:.1%}",
-                      delta=f"{f['worst_day_date']:%d %b %Y}",
-                      delta_color='off')
+            st.metric("Worst day", f"{f['worst_day_pct']:.1%}")
+            st.caption(f"{f['worst_day_date']:%d %b %Y}")
 
         with r2c2:
-            st.metric("Worst week", f"{f['worst_week_pct']:.1%}",
-                      delta=f"week ending {f['worst_week_date']:%d %b %Y}", delta_color='off')
+            st.metric("Worst week", f"{f['worst_week_pct']:.1%}")
+            st.caption(f"Week ending {f['worst_week_date']:%d %b %Y}")
 
         with r2c3:
-            st.metric("Worst month", f"{f['worst_month_pct']:.1%}",
-                      delta=f"{f['worst_month_date']:%B %Y}",
-                      delta_color='off')
+            st.metric("Worst month", f"{f['worst_month_pct']:.1%}")
+            st.caption(f"{f['worst_month_date']:%B %Y}")
 
         excess = health_report['excess_days']
         if excess > 0:
