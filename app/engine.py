@@ -151,6 +151,16 @@ def outcome_analyzer(df, amount):
     weekly = (1 + r).resample("W").prod() - 1
     monthly = (1 + r).resample("ME").prod() - 1
 
+    # Position value over time, and how much it moved each period 
+    V = amount * (1 + cr.fillna(0))
+    Vw = V.resample("W").last()
+    Vm = V.resample("ME").last()
+
+    wk_change = Vw.diff()
+    wk_change.iloc[0] = Vw.iloc[0] - amount 
+    mo_change = Vm.diff()
+    mo_change.iloc[0] = Vm.iloc[0] - amount 
+
     return {
 
         # Computes basic details 
@@ -182,7 +192,12 @@ def outcome_analyzer(df, amount):
         "worst_week_pct": weekly.min(),
         "worst_week_date": weekly.idxmin(),
         "worst_month_pct": monthly.min(),
-        "worst_month_date": monthly.idxmin()
+        "worst_month_date": monthly.idxmin(),
+        "low_value": amount * (1 + max_loss_pct),
+        "high_value": amount * (1 + max_profit_pct),
+        "worst_day_amount": V.diff().loc[r.idxmin()],
+        "worst_week_amount": wk_change.loc[weekly.idxmin()],
+        "worst_month_amount": mo_change.loc[monthly.idxmin()]
     }
 #--------------------------------------------------------------#
 #----------------------End-of-code-----------------------------#
