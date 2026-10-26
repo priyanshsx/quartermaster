@@ -14,8 +14,8 @@ from assets import ASSET_SPECS, get_spec
 left, mid, right = st.columns([1, 3, 1])
 
 with mid:
-    st.markdown("# What you'd have made, and what you'd have sat through")
-    st.markdown(" Pick an amount, an asset and a month. You'll get a complete risk analysis of how much you'd have made and other important details.")
+    st.markdown("# Check your asset's historical performance")
+    st.markdown(" Check how much you made, how your asset performed, your worst and best days.")
 #--------------------------------------------------------------#
 
     # Defines the three input columns 
@@ -122,16 +122,6 @@ with mid:
                     f"and never fell below what you put in."
                 )
 
-            with st.expander("How this is calculated"):
-                st.markdown(
-                    f"- Bought at the close of **{f['entry_date']:%d %b %Y}**, the first trading "
-                    f"day of {month_label}.\n"
-                    f"- Valued at the close of **{f['exit_date']:%d %b %Y}**. The current session "
-                    f"is excluded because it hasn't finished.\n"
-                    f"- Prices are adjusted for splits and dividends, so this is a total return.\n"
-                    f"- Figures are in {ccy}, the currency the asset trades in."
-                )
-
             r1c1, r1c2, r1c3 = st.columns(3)
             
 
@@ -159,6 +149,16 @@ with mid:
 
             r2c1, r2c2, r2c3 = st.columns(3)
 
+            with st.expander("How this is calculated"):
+                st.markdown(
+                    f"- Bought at the close of **{f['entry_date']:%d %b %Y}**, the first trading "
+                    f"day of {month_label}.\n"
+                    f"- Valued at the close of **{f['exit_date']:%d %b %Y}**. The current session "
+                    f"is excluded because it hasn't finished.\n"
+                    f"- Prices are adjusted for splits and dividends, so this is a total return.\n"
+                    f"- Figures are in {ccy}, the currency the asset trades in."
+                )
+
             with r2c1:
                 st.metric("Worst single day", f"-{ccy} {abs(f['worst_day_amount']):,.0f}",
                         help="The largest one-day fall in value.")
@@ -171,7 +171,7 @@ with mid:
 
             with r2c3:
                 st.metric("Worst month", f"-{ccy} {abs(f['worst_month_amount']):,.0f}",
-                        help="The largest fall across a single calendar")
+                        help="The largest fall across a single calendar month.")
                 st.caption(f"{f['worst_month_date']:%B %Y}, down {abs(f['worst_month_pct']):.1%}")
 
             excess = health_report['excess_days']
