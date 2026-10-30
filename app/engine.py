@@ -19,8 +19,7 @@ MAX_MISSING_DATES = 5
 #--------------------------------------------------------------#
 
 # Checks for date ranges for which data is available from yfinance
-@st.cache_data(ttl=86400)
-
+@st.cache_data(ttl=86400, show_spinner="Checking available history")
 def get_asset_date_bounds(symbol):
     ticker = yf.Ticker(symbol)
     df = ticker.history(period='max')
@@ -32,8 +31,7 @@ def get_asset_date_bounds(symbol):
 #--------------------------------------------------------------#
 
 # OHLCV downloader: downloads the raw data from yfinance
-@st.cache_data(ttl=3600, max_entries=100)
-
+@st.cache_data(ttl=3600, max_entries=100, show_spinner=False)
 def fetch_asset(ui_ticker, ui_start_date, ui_end_date):
 
     # downloads the raw data 
@@ -43,15 +41,23 @@ def fetch_asset(ui_ticker, ui_start_date, ui_end_date):
     if asset.empty:
         raise ValueError("No data found for this ticker and date range.")
 
+    today_utc = pd.Timestamp.utcnow().date()
+    asset = asset[asset.index.date < today_utc]
+
+    if asset.empty:
+        raise ValueError("Only today's session falls in this range. And it hasn't closed yet.")
+
     # formats the columns into a standard from the raw downloaded data   
-    asset.columns = asset.columns.droplevel(1).str.lower()
+    if isinstance(asset.columns, pd.MultiIndex):
+        asset.columns = asset.columns.get_level_values(0)
+    asset.columns = asset.columns.str.lower()
     asset.index.name = 'date'
     asset.columns.name = None 
     return asset 
 #--------------------------------------------------------------#
 
 # Serializes the analyzed frame for download 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def to_csv_bytes(df):
     keep_full = {"open", "high", "low", "close", "sma_20", "sma_50", "volume"}
     rounding = {c: 6 for c in df.columns if c not in keep_full}
@@ -122,3 +128,76 @@ def quant_analyzer(df, ui_ticker, spec):
 
     return df
 #--------------------------------------------------------------#
+
+# Computes the numbers displayed on the planner page
+def outcome_analyzer(df, amount):
+    cr = df['cumulative_return']
+    r = df['daily_returns']
+
+    # Entries and exits 
+    entry_price = df['close'].iloc[0]
+    entry_date = df.index[0]
+    exit_price = df['close'].iloc[-1]
+    exit_date = df.index[-1]
+
+    # Final Value    
+    final_value = amount * (1 + cr.iloc[-1])
+
+    # Max unrealized loss 
+    max_loss_pct = cr.min()
+    max_profit_pct = cr.max()
+
+    # Worst week, worst month 
+    weekly = (1 + r).resample("W").prod() - 1
+    monthly = (1 + r).resample("ME").prod() - 1
+
+    # Position value over time, and how much it moved each period 
+    V = amount * (1 + cr.fillna(0))
+    Vw = V.resample("W").last()
+    Vm = V.resample("ME").last()
+
+    wk_change = Vw.diff()
+    wk_change.iloc[0] = Vw.iloc[0] - amount 
+    mo_change = Vm.diff()
+    mo_change.iloc[0] = Vm.iloc[0] - amount 
+
+    return {
+
+        # Computes basic details 
+        "entry_price": entry_price,
+        "entry_date": entry_date,
+        "exit_price": exit_price,
+        "exit_date": exit_date,
+        "final_value": final_value,
+        "gain_amount": amount * cr.iloc[-1],
+        "gain_pct": cr.iloc[-1],
+
+        # Computes max loss amounts
+        "max_loss_amount": amount * max_loss_pct,
+        "max_loss_pct": max_loss_pct,
+        "max_loss_date": cr.idxmin(),
+
+        # Computes max profit amounts 
+        "max_profit_amount": amount * max_profit_pct,
+        "max_profit_pct": max_profit_pct,
+        "max_profit_date": cr.idxmax(),
+        
+        # Computes loss days 
+        "loss_days": int((cr < 0).sum()),
+        "total_days": len(df),
+
+        # Computes worst performance returns, date(s), and week(s)
+        "worst_day_pct": r.min(),
+        "worst_day_date": r.idxmin(),
+        "worst_week_pct": weekly.min(),
+        "worst_week_date": weekly.idxmin(),
+        "worst_month_pct": monthly.min(),
+        "worst_month_date": monthly.idxmin(),
+        "low_value": amount * (1 + max_loss_pct),
+        "high_value": amount * (1 + max_profit_pct),
+        "worst_day_amount": V.diff().loc[r.idxmin()],
+        "worst_week_amount": wk_change.loc[weekly.idxmin()],
+        "worst_month_amount": mo_change.loc[monthly.idxmin()]
+    }
+#--------------------------------------------------------------#
+#----------------------End-of-code-----------------------------#

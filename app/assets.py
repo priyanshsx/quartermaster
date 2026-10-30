@@ -35,18 +35,14 @@ ASSET_SPECS = {
     "AAPL": {"display": "Apple", "market": "us_equity"},
     "SPY": {"display": "S&P500", "market": "us_equity"},
     "MSFT": {"display": "Microsoft", "market": "us_equity"},
+    "GLD": {"display": "Gold", "market": "us_equity"},
+    "SLV": {"display": "Silver", "market": "us_equity"},
     #--------------------------------------------------------------#
 
     # Indian Equity
     "RELIANCE.NS": {"display": "Reliance Industries", "market": "in_equity"},
     "TCS.NS": {"display": "TATA Consultancy Services", "market": "in_equity"},
-    "INFY.NS": {"display": "Infosys", "market": "in_equity"},
-    #--------------------------------------------------------------#
-
-    # Commodity
-    "GC=F": {"display": "Gold Futures", "market": "commodity"},
-    "GLD": {"display": "Gold", "market": "commodity"},
-    "SLV": {"display": "Silver", "market": "commodity"}
+    "INFY.NS": {"display": "Infosys", "market": "in_equity"}
     #--------------------------------------------------------------#
 }
 
