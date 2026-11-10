@@ -129,7 +129,7 @@ def quant_analyzer(df, ui_ticker, spec):
     return df
 #--------------------------------------------------------------#
 
-# Computes the numbers displayed on the planner page
+# Computes the numbers displayed on the performance calculator page
 def outcome_analyzer(df, amount):
     cr = df['cumulative_return']
     r = df['daily_returns']

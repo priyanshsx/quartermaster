@@ -59,7 +59,7 @@ with mid:
         run = st.button("Check My Asset's Performance", type="primary", width="stretch")
 
     if run:
-        st.session_state.pop("planner_result", None)
+        st.session_state.pop("performance_result", None)
 
         if ui_month is None:
             st.error("No months available for this asset. Please try another.")
@@ -78,7 +78,7 @@ with mid:
         health_report = tick_inspector(raw, spec)
         enriched_data = quant_analyzer(raw, ui_ticker, spec) if health_report["is_healthy"] else None
 
-        st.session_state['planner_result'] = {
+        st.session_state['performance_result'] = {
             "ticker": ui_ticker, 
             "amount": amount,
             "month": ui_month, 
@@ -86,7 +86,7 @@ with mid:
             "enriched_data": enriched_data
         }
 
-    result = st.session_state.get('planner_result')
+    result = st.session_state.get('performance_result')
 
     if result:
         health_report = result['health_report']
