@@ -227,24 +227,36 @@ with mid:
             top_name = ASSET_SPECS[top_t]["display"]
 
             # ---- the statement, in plain language, before any numbers table ----
-            lead = (
-                f"Over **{top['n_obs']:,} {period}**, {primary_name} moved in the same "
-                f"direction as **{top_name}** in **{fmt(top['same_direction_pct'], pct=True)}** "
-                f"of them"
+            # The lead makes a claim about direction agreement, so it ranks on that
+            # rather than on correlation. With several comparison assets the two
+            # orderings disagree, and quoting one while ranking by the other
+            # contradicts the table directly below it.
+            by_dir = sorted(
+                (r for r in rows
+                 if r[1]["same_direction_pct"] == r[1]["same_direction_pct"]),
+                key=lambda kv: kv[1]["same_direction_pct"],
+                reverse=True,
             )
-            if len(rows) > 1:
-                bottom_t, bottom = rows[-1]
+            dir_t, dir_m = by_dir[0] if by_dir else (top_t, top)
+
+            lead = (
+                f"Over **{dir_m['n_obs']:,} {period}**, {primary_name} moved in the same "
+                f"direction as **{ASSET_SPECS[dir_t]['display']}** in "
+                f"**{fmt(dir_m['same_direction_pct'], pct=True)}** of them"
+            )
+            if len(by_dir) > 1:
+                low_t, low_m = by_dir[-1]
                 lead += (
                     f" — more often than any other asset here. "
-                    f"**{ASSET_SPECS[bottom_t]['display']}** came closest to moving "
-                    f"independently, at **{fmt(bottom['same_direction_pct'], pct=True)}**."
+                    f"**{ASSET_SPECS[low_t]['display']}** came closest to moving "
+                    f"independently, at **{fmt(low_m['same_direction_pct'], pct=True)}**."
                 )
             else:
                 lead += "."
 
             st.markdown(lead)
             st.markdown(
-                f"The closest relationship, **{top_name}**, lines up with about "
+                f"The strongest relationship, **{top_name}**, lines up with about "
                 f"**{fmt(top['r_squared'], pct=True)}** of {primary_name}'s {freq_word} "
                 f"movement over this period. The rest came from somewhere else."
             )
