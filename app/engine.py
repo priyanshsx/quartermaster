@@ -200,4 +200,86 @@ def outcome_analyzer(df, amount):
         "worst_month_amount": mo_change.loc[monthly.idxmin()]
     }
 #--------------------------------------------------------------#
+
+# Returns the default return frequency for a pair of assets: daily when both
+# trade on the same market, weekly when they do not
+def default_freq(spec_a, spec_b):
+    return "D" if spec_a["market"] == spec_b["market"] else "W"
+#--------------------------------------------------------------#
+
+# Pair Aligner: puts two assets onto a shared calendar before comparing them
+def align_pair(df_a, df_b, freq="W"):
+    # keeps only the days on which both assets traded
+    common = df_a.index.intersection(df_b.index).sort_values()
+
+    if len(common) == 0:
+        raise ValueError("These two assets share no trading days in this range.")
+
+    # reindexes PRICES, not returns. A move on a day that only one asset traded
+    # is then compounded into the next shared observation instead of being
+    # thrown away: a Bitcoin weekend is carried into Monday.
+    price_a = df_a['close'].reindex(common)
+    price_b = df_b['close'].reindex(common)
+
+    # weekly resampling happens AFTER reindexing, so both series end their week
+    # on the same shared trading day rather than on their own calendars
+    if freq == "W":
+        price_a = price_a.resample("W").last()
+        price_b = price_b.resample("W").last()
+
+    aligned = pd.concat([price_a.pct_change(), price_b.pct_change()], axis=1, keys=["a", "b"])
+
+    return aligned.dropna()
+#--------------------------------------------------------------#
+
+# Pair Analyzer: computes how two aligned return series relate to each other
+def pair_analyzer(aligned, window):
+    a = aligned['a']
+    b = aligned['b']
+
+    # rolling correlation, and rolling beta of a measured against b
+    rolling_corr = a.rolling(window).corr(b)
+    rolling_beta = a.rolling(window).cov(b) / b.rolling(window).var()
+    rolling_beta = rolling_beta.replace([np.inf, -np.inf], np.nan)
+
+    # whole-period figures. var_b guards a flat series such as a stablecoin,
+    # where dividing by zero variance would return infinity.
+    full_corr = a.corr(b)
+    var_b = b.var()
+    full_beta = a.cov(b) / var_b if var_b else np.nan
+
+    # share of periods where both moved the same way. Flat periods are left out
+    # because np.sign(0) is 0, so two flat periods would otherwise count as
+    # agreeing with each other.
+    moved = (a != 0) & (b != 0)
+    same = np.sign(a[moved]) == np.sign(b[moved])
+    n_moved = int(moved.sum())
+
+    return {
+
+        # Rolling series, for the chart
+        "rolling_corr": rolling_corr,
+        "rolling_beta": rolling_beta,
+
+        # Whole-period figures, for the table
+        "full_corr": full_corr,
+        "full_beta": full_beta,
+        "r_squared": full_corr ** 2,
+
+        # Direction agreement, with the counts behind it
+        "same_direction_pct": same.mean() if n_moved else np.nan,
+        "same_direction_periods": int(same.sum()),
+        "n_moved": n_moved,
+
+        # Lead and lag. corr_b_leads pairs today's a against yesterday's b, so a
+        # high value there means b moved first.
+        "corr_b_leads": a.corr(b.shift(1)),
+        "corr_same": full_corr,
+        "corr_a_leads": a.shift(1).corr(b),
+
+        # Context for the caller
+        "n_obs": len(aligned),
+        "window": window
+    }
+#--------------------------------------------------------------#
 #----------------------End-of-code-----------------------------#
