@@ -21,7 +21,7 @@ ASSET_SPECS = {
     "ETH-USD": {"display": "Ethereum", "market": "crypto"},
     "SOL-USD": {"display": "Solana", "market": "crypto"},
     "HYPE-USD": {"display": "Hype", "market": "crypto"},
-    "USDT-USD": {"display": "USDT", "market": "crypto"},
+    "USDT-USD": {"display": "USDT", "market": "crypto", "comparable": False},
     "BNB-USD": {"display": "BNB", "market": "crypto"},
     "XRP-USD": {"display": "XRP", "market": "crypto"},
     "ZEC-USD": {"display": "ZEC", "market": "crypto"},
@@ -42,7 +42,8 @@ ASSET_SPECS = {
     # Indian Equity
     "RELIANCE.NS": {"display": "Reliance Industries", "market": "in_equity"},
     "TCS.NS": {"display": "TATA Consultancy Services", "market": "in_equity"},
-    "INFY.NS": {"display": "Infosys", "market": "in_equity"}
+    "INFY.NS": {"display": "Infosys", "market": "in_equity"},
+    "^NSEI": {"display": "Nifty 50", "market": "in_equity"}
     #--------------------------------------------------------------#
 }
 
