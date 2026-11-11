@@ -21,8 +21,8 @@ There are three pages:
 
 - **Performance Calculator** — what a given amount invested on a given date would be
   worth now, and the worst and best points along the way.
-- **Quant Mode** — risk and return figures for one asset: volatility, drawdown,
-  distribution, moving averages.
+- **Quantitative Metrics** — risk and return figures for one asset: volatility,
+  drawdown, distribution, moving averages.
 - **Correlations** — how one asset moved relative to up to five others.
 
 ## Market conventions
