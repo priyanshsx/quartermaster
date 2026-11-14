@@ -310,17 +310,13 @@ with mid:
 
             st.markdown(f"#### Each asset's rolling correlation with {primary_name}")
             st.caption(
-                f"{win_phrase}. "
-                f"{primary_name} is the baseline, so it has no line of its own — every "
-                f"line already measures one asset against it. The three strongest are "
-                f"drawn; click a name in the legend to add or remove it."
+                f"{win_phrase}. Every line is one asset measured against "
+                f"{primary_name}, so {primary_name} has no line of its own — its "
+                f"correlation with itself would be a flat 1.0. The three strongest "
+                f"are drawn; click a name in the legend to add or remove it."
             )
 
             fig = go.Figure()
-
-            # the band inside which a relationship is weak enough to be mostly noise
-            fig.add_hrect(y0=-0.3, y1=0.3, line_width=0,
-                          fillcolor="#9498A0", opacity=0.07, layer="below")
 
             for i, (t, m) in enumerate(rows):
                 series = m["rolling_corr"].dropna()
@@ -336,14 +332,36 @@ with mid:
                     hovertemplate="%{y:.2f}<extra>%{fullData.name}</extra>",
                 ))
 
-            fig.update_yaxes(range=[-1, 1], title_text="Correlation",
-                             zeroline=True, zerolinecolor="#282828")
-            fig.update_layout(hovermode="x unified")
+            fig.update_yaxes(title_text="Correlation", range=[-1, 1],
+                             tickvals=[-1, -0.5, 0, 0.5, 1], zeroline=False)
 
-            st.plotly_chart(style_fig(fig, height=420), width="stretch")
+            # An emphasised zero line, and the scale said in words. There is
+            # deliberately no shaded band: shading the middle reads as "this is the
+            # normal zone", which made a correlation of zero look like agreement
+            # rather than the absence of one.
+            fig.add_hline(y=0, line_width=1, line_color="#4A4A4A")
+
+            # The labels sit outside the plot area, so they can never run through
+            # a line the way an inside annotation does.
+            for y, label in ((1, "move together"),
+                             (0, "no correlation at 0"),
+                             (-1, "move opposite")):
+                fig.add_annotation(
+                    xref="paper", x=1.0, xanchor="left", xshift=10,
+                    yref="y", y=y, yanchor="middle",
+                    text=label, showarrow=False,
+                    font=dict(size=11, color="#8A8F99"),
+                )
+
+            fig.update_layout(hovermode="x unified")
+            fig = style_fig(fig, height=460)
+            fig.update_layout(margin=dict(t=40, b=30, l=50, r=128))
+
+            st.plotly_chart(fig, width="stretch")
             st.caption(
-                "The shaded band marks ±0.3. Inside it, the relationship is weak "
-                "enough that it is mostly noise."
+                "A correlation of 1.0 means the two moved the same way in every "
+                "period, 0 means they moved independently, and −1.0 means they "
+                "moved in exactly opposite directions."
             )
 
             # ---- lead and lag, always on daily returns ----
