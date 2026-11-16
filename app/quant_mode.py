@@ -174,6 +174,14 @@ if result:
             st.plotly_chart(returns_histogram_fig, width="stretch")
             st.caption("Each bar groups days by their return. Hover to see the return range "
                        "and how many days fell in it. Axis zoomed to the 1st-99th percentile.")
+
+        # Carries the selected asset over to Correlations, so the user does not
+        # have to pick it again. The Correlations primary selectbox uses this
+        # session key, so writing it here pre-selects the asset there.
+        st.divider()
+        if st.button(f"Compare {result['ticker']} against another asset"):
+            st.session_state["correlations_primary"] = result["ticker"]
+            st.switch_page("correlations.py")
 #--------------------------------------------------------------#
 
 # Dealing with bad data         
