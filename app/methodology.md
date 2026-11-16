@@ -318,6 +318,33 @@ comparison's current. A high value in the first means the comparison asset moved
 These are computed on **daily** returns whatever the page is showing, because weekly
 returns are too coarse to separate a lead from a lag.
 
+### Describing a figure in words
+
+The page says in plain language whether a correlation is large or small. The bands are
+a common convention rather than a law, and the figure itself is always shown beside the
+description:
+
+| Correlation | Described as |
+|---|---|
+| below 0.2 | close to no relationship at all |
+| 0.2 to 0.4 | a weak relationship |
+| 0.4 to 0.7 | a moderate relationship |
+| 0.7 and above | a strong relationship |
+
+A correlation below −0.2 is described as *inverse*. Different fields draw these lines
+in different places.
+
+The share of periods two assets moved the same way is reported against **50%**, which
+is what two unrelated assets produce.
+
+### Timing verdicts
+
+The timing table says which of its three figures matters. A figure counts only if it
+clears the 95% threshold for the number of observations behind it — roughly 0.04 on ten
+years of daily data. Below that it cannot be told apart from noise, and the row reads
+"No clear timing pattern". Where a lagged figure is at least 70% as large as the
+same-day one, both are reported rather than only the larger.
+
 ### Rolling windows
 
 Rolling figures use a **52-week** window on weekly returns. On daily returns the window is

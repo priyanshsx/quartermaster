@@ -2,6 +2,9 @@
 #--------------------------------------------------------------#
 
 # Imports libraries
+import math
+import time
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -140,28 +143,56 @@ with mid:
     if run:
         st.session_state.pop("correlations_result", None)
 
-        frames, failed = {}, []
+        # failed maps a ticker to why it dropped out, so the message can say
+        # something true rather than guessing at the cause
+        frames, failed = {}, {}
         for t in [ui_primary] + ui_compare:
-            try:
-                with st.spinner(f"Fetching {t}..."):
-                    raw = fetch_asset(t, ui_start, ui_end + timedelta(days=1))
-            except Exception:
-                failed.append(t)
+            raw = None
+            for attempt in (1, 2):
+                try:
+                    with st.spinner(f"Fetching {t}..."):
+                        raw = fetch_asset(t, ui_start, ui_end + timedelta(days=1))
+                except ValueError as exc:
+                    # the engine raises this when the range really holds no data
+                    failed[t] = ("no_data", str(exc))
+                    break
+                except Exception:
+                    # nearly always a Yahoo rate limit, which clears in a moment.
+                    # Exceptions are never cached, so a second call does retry.
+                    if attempt == 1:
+                        time.sleep(1.5)
+                        continue
+                    failed[t] = ("unreachable", "")
+                else:
+                    break
+
+            if raw is None:
                 continue
 
             spec = get_spec(t)
             health = tick_inspector(raw, spec)
             if not health["is_healthy"]:
-                failed.append(t)
+                failed[t] = ("integrity", "")
                 continue
 
             frames[t] = quant_analyzer(raw, t, spec)
 
         if ui_primary in failed or len(frames) < 2:
-            st.error(
-                "Couldn't build a clean comparison from these assets. "
-                "Try a different selection or a shorter period."
-            )
+            unreachable = [k for k, (why, _) in failed.items() if why == "unreachable"]
+            if unreachable:
+                names = ", ".join(ASSET_SPECS[k]["display"] for k in unreachable)
+                st.error(
+                    f"Couldn't reach Yahoo Finance for {names}. This is almost always "
+                    f"a temporary rate limit rather than a problem with the assets \u2014 "
+                    f"wait a few seconds and run it again."
+                )
+            else:
+                detail = next((msg for _, msg in failed.values() if msg), "")
+                st.error(
+                    "Couldn't build a clean comparison from these assets. "
+                    + (detail + " " if detail else "")
+                    + "Try a different selection or a shorter period."
+                )
             st.stop()
 
         # Both frequencies are computed on every run. Prices are already
@@ -180,7 +211,7 @@ with mid:
                 entry[f] = pair_analyzer(aligned, win[f]) if len(aligned) >= win[f] else None
 
             if entry["W"] is None and entry["D"] is None:
-                failed.append(t)
+                failed[t] = ("window", "")
                 continue
 
             pairs[t] = entry
@@ -240,26 +271,43 @@ with mid:
             dir_t, dir_m = by_dir[0] if by_dir else (top_t, top)
 
             lead = (
-                f"Over **{dir_m['n_obs']:,} {period}**, {primary_name} moved in the same "
-                f"direction as **{ASSET_SPECS[dir_t]['display']}** in "
-                f"**{fmt(dir_m['same_direction_pct'], pct=True)}** of them"
+                f"{primary_name} and **{ASSET_SPECS[dir_t]['display']}** moved the same "
+                f"way in **{fmt(dir_m['same_direction_pct'], pct=True)}** of "
+                f"{dir_m['n_obs']:,} {period}"
             )
             if len(by_dir) > 1:
                 low_t, low_m = by_dir[-1]
                 lead += (
-                    f" — more often than any other asset here. "
-                    f"**{ASSET_SPECS[low_t]['display']}** came closest to moving "
-                    f"independently, at **{fmt(low_m['same_direction_pct'], pct=True)}**."
+                    f", more often than any other asset here. "
+                    f"**{ASSET_SPECS[low_t]['display']}** was the least aligned, at "
+                    f"**{fmt(low_m['same_direction_pct'], pct=True)}**."
                 )
             else:
                 lead += "."
 
-            st.markdown(lead)
+            # 50% is what two unrelated assets produce, so the figure above needs
+            # that anchor or it means nothing to a reader
+            lead += " Two assets with no relationship would land near 50%."
+
+            # Says in words whether the coefficient is a lot or a little. The bands
+            # are a convention rather than a law, and are stated in the methodology.
+            def strength(r):
+                size = abs(r)
+                kind = "inverse " if r <= -0.2 else ""
+                if size >= 0.7:
+                    return f"a strong {kind}relationship"
+                if size >= 0.4:
+                    return f"a moderate {kind}relationship"
+                if size >= 0.2:
+                    return f"a weak {kind}relationship"
+                return "close to no relationship at all"
+
+            tail = " — and that is the closest pairing here." if len(rows) > 1 else "."
             st.markdown(
-                f"The strongest relationship, **{top_name}**, lines up with about "
-                f"**{fmt(top['r_squared'], pct=True)}** of {primary_name}'s {freq_word} "
-                f"movement over this period. The rest came from somewhere else."
+                f"At a correlation of **{fmt(top['full_corr'])}**, {primary_name} and "
+                f"**{top_name}** show {strength(top['full_corr'])}{tail}"
             )
+            st.markdown(lead)
 
             # ---- the table ----
             st.dataframe(
@@ -273,13 +321,21 @@ with mid:
                 } for t, m in rows]),
                 hide_index=True,
                 width="stretch",
-            )
-
-            st.caption(
-                f"Beta is the slope of {primary_name} against that asset — how far it "
-                f"moved, on average, per 1% move in the other. It is not a market beta. "
-                f"R² is correlation squared: the same measurement read as a share of "
-                f"movement, not a second finding."
+                column_config={
+                    "Correlation": st.column_config.TextColumn(help=(
+                        "1.0 means the two moved the same way every period, 0 means "
+                        "they moved independently, −1.0 means exactly opposite.")),
+                    "Beta": st.column_config.TextColumn(help=(
+                        f"How far {primary_name} moved, on average, for each 1% move "
+                        f"in that asset. A slope between two assets, not a market "
+                        f"beta.")),
+                    "R²": st.column_config.TextColumn(help=(
+                        "Correlation squared, read as a share of movement. The same "
+                        "measurement in different units, not a second finding.")),
+                    "Same direction": st.column_config.TextColumn(help=(
+                        "The share of periods in which both assets moved the same "
+                        "way. Two unrelated assets land near 50%.")),
+                },
             )
 
             # ---- the same pair at the other frequency, which usually differs ----
@@ -288,10 +344,9 @@ with mid:
             other_m = pairs[top_t].get(other)
             if other_m and other_m["full_corr"] == other_m["full_corr"]:
                 st.caption(
-                    f"Measured on {other_word} returns instead, {top_name} reads "
-                    f"**{fmt(other_m['full_corr'])}** rather than {fmt(top['full_corr'])}. "
-                    f"Correlation depends on the period you measure it over — see "
-                    f"*How this is calculated* below."
+                    f"On {other_word} returns it reads **{fmt(other_m['full_corr'])}** "
+                    f"rather than {fmt(top['full_corr'])}. Correlation depends on the "
+                    f"period you measure over — *How this is calculated* explains why."
                 )
 
             # ---- the rolling chart ----
@@ -308,13 +363,31 @@ with mid:
                         + ", depending on how many days a pair's two markets both trade"
                     )
 
-            st.markdown(f"#### Each asset's rolling correlation with {primary_name}")
-            st.caption(
-                f"{win_phrase}. Every line is one asset measured against "
-                f"{primary_name}, so {primary_name} has no line of its own — its "
-                f"correlation with itself would be a flat 1.0. The three strongest "
-                f"are drawn; click a name in the legend to add or remove it."
-            )
+            if len(rows) == 1:
+                chart_title = (f"{ASSET_SPECS[rows[0][0]]['display']}'s rolling "
+                               f"correlation with {primary_name}")
+            else:
+                chart_title = f"Each asset's rolling correlation with {primary_name}"
+
+            head, info = st.columns([14, 1], vertical_alignment="center")
+            with head:
+                st.markdown(f"#### {chart_title}")
+            with info:
+                with st.popover("ⓘ"):
+                    st.markdown(
+                        "A correlation of **1.0** means the two moved the same way in "
+                        "every period, **0** means they moved independently, and "
+                        "**−1.0** means they moved in exactly opposite directions."
+                    )
+                    if len(rows) > 1:
+                        st.markdown(
+                            f"Every line is one asset measured against {primary_name}, "
+                            f"so {primary_name} has no line of its own — its "
+                            f"correlation with itself would be a flat 1.0. The three "
+                            f"strongest are drawn; click a name in the legend to add "
+                            f"or remove it."
+                        )
+            st.caption(f"{win_phrase}.")
 
             fig = go.Figure()
 
@@ -358,11 +431,6 @@ with mid:
             fig.update_layout(margin=dict(t=40, b=30, l=50, r=128))
 
             st.plotly_chart(fig, width="stretch")
-            st.caption(
-                "A correlation of 1.0 means the two moved the same way in every "
-                "period, 0 means they moved independently, and −1.0 means they "
-                "moved in exactly opposite directions."
-            )
 
             # ---- lead and lag, always on daily returns ----
             lag_rows = [(t, pairs[t]["D"]) for t, _ in rows
@@ -371,22 +439,64 @@ with mid:
                         and pairs[t]["D"]["corr_same"] == pairs[t]["D"]["corr_same"]]
 
             if lag_rows:
-                st.markdown("#### Lead and lag")
+                st.markdown("#### Timing")
                 st.caption(
-                    "Measured on daily returns, where timing differences are visible. "
-                    "Weekly returns are too coarse to separate a lead from a lag. Only "
-                    "assets trading on a different market from "
-                    f"{primary_name} are shown."
+                    "Measured on daily returns, where timing differences show. Only "
+                    f"assets trading on a different market from {primary_name} appear "
+                    f"here."
                 )
+
+                # Three bare correlations do not tell a reader which one matters, so
+                # every row carries a verdict. A term counts only if it clears the 95%
+                # threshold for that many observations; below it, the figure is noise.
+                def timing_verdict(m):
+                    n = m["n_obs"]
+                    threshold = 1.96 / math.sqrt(n - 3) if n > 4 else 1.0
+                    terms = (
+                        (m["corr_same"], "same"),
+                        (m["corr_a_leads"], "primary"),
+                        (m["corr_b_leads"], "asset"),
+                    )
+                    real = sorted(
+                        ((v, k) for v, k in terms if v == v and v > threshold),
+                        reverse=True,
+                    )
+                    if not real:
+                        return "No clear timing pattern"
+
+                    strongest, leader = real[0]
+                    keys = [leader] + [k for v, k in real[1:] if v >= 0.7 * strongest]
+
+                    if "primary" in keys:
+                        if "same" in keys:
+                            return f"Partly same day, partly a day after {primary_name}"
+                        return f"Follows {primary_name} by a day"
+                    if "asset" in keys:
+                        if "same" in keys:
+                            return f"Partly same day, partly a day before {primary_name}"
+                        return f"Moves a day before {primary_name}"
+                    return "Moves within the same day"
+
                 st.dataframe(
                     pd.DataFrame([{
                         "Asset": ASSET_SPECS[t]["display"],
+                        "What this means": timing_verdict(m),
                         "Asset moved first": fmt(m["corr_b_leads"]),
                         "Same day": fmt(m["corr_same"]),
                         f"{primary_name} moved first": fmt(m["corr_a_leads"]),
                     } for t, m in lag_rows]),
                     hide_index=True,
                     width="stretch",
+                    column_config={
+                        "Asset moved first": st.column_config.TextColumn(help=(
+                            f"How closely that asset's move on one day lines up with "
+                            f"{primary_name}'s move the next day.")),
+                        "Same day": st.column_config.TextColumn(help=(
+                            "How closely the two moved on the same day.")),
+                        f"{primary_name} moved first": st.column_config.TextColumn(help=(
+                            f"How closely {primary_name}'s move on one day lines up "
+                            f"with that asset's move the next day.")),
+                    },
                 )
 
             # ---- methodology ----
@@ -430,12 +540,24 @@ with mid:
                 )
 
         if result["failed"]:
-            names = ", ".join(ASSET_SPECS[t]["display"] for t in result["failed"])
-            st.warning(
-                f"Left out of the comparison: {names}. Either the price history "
-                f"failed its integrity checks, or there were not enough shared "
-                f"trading days to fill the rolling window."
-            )
+            dropped = result["failed"]
+            unreachable = [k for k, (why, _) in dropped.items() if why == "unreachable"]
+            other = [k for k, (why, _) in dropped.items() if why != "unreachable"]
+            if unreachable:
+                st.warning(
+                    "Couldn't reach Yahoo Finance for "
+                    + ", ".join(ASSET_SPECS[k]["display"] for k in unreachable)
+                    + ". That is usually a temporary rate limit \u2014 run the "
+                    "comparison again to include them."
+                )
+            if other:
+                st.warning(
+                    "Left out of the comparison: "
+                    + ", ".join(ASSET_SPECS[k]["display"] for k in other)
+                    + ". Either the price history failed its integrity checks, or "
+                    "there were not enough shared trading days to fill the rolling "
+                    "window."
+                )
 
         st.caption("Historical measurements only. Not investment advice.")
 #--------------------------------------------------------------#
